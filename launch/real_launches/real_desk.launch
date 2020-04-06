@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<launch>
+
+<arg name="find_pkg" default="$(find final_project)"/>
+
+
+  <!-- robot_ip: IP-address of the robot's socket-messaging server -->
+  <arg name="robot_ip" default="172.22.22.2"/>
+  <arg name="limited" default="true"/>
+  <arg name="min_payload"  default="0.0"/>
+  <arg name="max_payload"  default="5.0"/>
+  <arg name="prefix" default="" />
+  <arg name="servoj_time" default="0.008" />
+  <arg name="base_frame" default="$(arg prefix)base" />
+  <arg name="tool_frame" default="$(arg prefix)tool0_controller" />
+
+  <!-- robot model -->
+  <param unless="$(arg limited)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find ur_description)/urdf/ur5_robot.urdf.xacro'" />
+  <param if="$(arg limited)" name="robot_description" command="$(find xacro)/xacro --inorder '$(arg find_pkg)/urdf/ur5/ur5_joint_limited_robot_extended.urdf.xacro'" />
+  
+  <!-- The max_velocity parameter is only used for debugging in the ur_driver. It's not related to actual velocity limits -->
+  <arg name="max_velocity" default="10.0"/> <!-- [rad/s] -->
+
+<!-- Robot state publisher -->
+<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+	<param name="publish_frequency" type="double" value="50.0"/>
+	<param name="tf_prefix" type="string" value=""/>
+</node>
+
+  <!-- driver -->
+  <node name="ur_driver" pkg="ur_modern_driver" type="ur_driver" output="screen">
+  <!-- copy the specified IP address to be consistant with ROS-Industrial spec. -->
+    <param name="prefix" type="str" value="$(arg prefix)" />
+    <param name="robot_ip_address" type="str" value="$(arg robot_ip)" />
+    <param name="min_payload" type="double" value="$(arg min_payload)" />
+    <param name="max_payload" type="double" value="$(arg max_payload)" />
+    <param name="max_velocity" type="double" value="$(arg max_velocity)" />
+    <param name="servoj_time" type="double" value="$(arg servoj_time)" />
+	<param name="base_frame" type="str" value="$(arg base_frame)"/>
+    <param name="tool_frame" type="str" value="$(arg tool_frame)"/>
+  </node>
+
+<!-- moveit! -->
+<include file="$(find ur5_moveit_config)/launch/move_group.launch">
+	<arg name="limited" default="true"/>
+</include>
+
+	<!-- camera -->
+	  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+	    <param name="video_device" value="/dev/video0" />
+	    <param name="image_width" value="1920" />
+	    <param name="image_height" value="1080" />
+	    <param name="pixel_format" value="yuyv" />
+	    <param name="camera_frame_id" value="camera_link" />
+	    <param name="io_method" value="mmap"/>
+	  </node>
+
+	<!-- AR tag -->
+	<node pkg="image_proc" type="image_proc" name="image_proc"
+		output="screen" ns="usb_cam"/>
+
+	<node pkg="aruco_ros" type="double" name="aruco" ns="usb_cam">
+		<remap from="/image" to="image_raw" />
+		<remap from="/camera_info" to="camera_info" />
+		<param name="image_is_rectified" value="True"/>
+		<param name="marker_size"        value="0.1"/>
+		<!-- param name="marker_id1"          value="01"/ -->
+		<param name="marker_id1"          value="26"/>
+		<!-- param name="marker_id2"		  value="26"/ -->
+		<param name="marker_id2"		  value="01"/>
+		<param name="normalizeImage"	 value="True"/>
+		<param name="dct_components_to_remove" value="2"/>
+		<param name="parent_name"       value="camera_link"/>
+		<param name="child_name1"       value="/edumip_marker"/>
+		<param name="child_name2"  		value="/fixed_marker" />
+	</node>
+
+	<!-- start rviz -->
+	<!-- node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0.5671 0.6030 0.5679 -0.5001 -0.7521 0.3200 0.2860 base_link camera_link 100"/ -->
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera" args="0.7611    0.2337    0.4414   -0.6759   -0.5842    0.2735    0.3565 base_link camera_link 100"/>
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg find_pkg)/rviz/real_desk.rviz" output="screen">
+		<rosparam command="load" file="$(find ur5_moveit_config)/config/kinematics.yaml"/>
+	</node>
+</launch>

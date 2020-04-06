@@ -1,0 +1,22 @@
+<launch>
+
+    <!-- begin UR5 transporting -->
+    <node ns="UR5" name="ur5_catcher" pkg="final_project" 
+        type="ur5_catcher_moveit" output="screen">
+        <remap from="/aruco/pose" to="/CAMERA/camera/aruco/pose"/>
+        <remap from="/aruco/pose2" to="/CAMERA/camera/aruco/pose2"/>
+        <remap from="gripper_controller/command" to="gripper_controller/command"/>
+        <param name="catcher_move_distance" type="double" value="0.30"/>
+        <param name="gripper_edumip_distance" type="double" value="0.16"/>
+        <param name="edumip_artag_shift" type="double" value="0.00"/>  <!-- move forward along x axis is positive -->
+        <param name="camera_pose_x" type="double" value="-0.15"/>
+        <param name="camera_pose_y" type="double" value="0.0"/>
+        <param name="camera_pose_z" type="double" value="3.0"/>
+        <param name="camera_orien_x" type="double" value="1.0"/>
+        <param name="camera_orien_y" type="double" value="0.0"/>
+        <param name="camera_orien_z" type="double" value="0.0"/>
+        <param name="camera_orien_w" type="double" value="0.0"/>
+        <param name="planning_algorithm" type="string" value="RRTConnectkConfigDefault"/>
+    </node>
+
+</launch>

@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="ur5" >
+
+    <xacro:include filename="$(find final_project)/urdf/camera/r200.gazebo"/>
+
+    <!-- some constants -->
+    <xacro:property name="PI" value="3.1415926"/>
+
+    <xacro:property name="pole_length" value="0.2"/>    <!-- with half camera length -->
+    <xacro:property name="pole_radius" value="0.01"/>
+
+    <xacro:property name="camera_link" value="0.01"/>
+        <!-- marginal view -->
+        <!-- <xacro:property name="camera_roll" value="0"/> -->
+        <!-- <xacro:property name="camera_pitch" value="${PI/2.8}"/> -->
+        <!-- <xacro:property name="camera_yaw" value="${-PI/2}"/> -->
+    <!-- center view -->
+    <xacro:property name="camera_roll" value="${PI}"/>
+    <xacro:property name="camera_pitch" value="0"/>
+    <xacro:property name="camera_yaw" value="0"/>
+
+    <!-- center view -->
+    <xacro:property name="fixed_x" value="-0.15"/>   <!-- swift left a little to catch better motion of EduMIP -->
+    <xacro:property name="fixed_y" value="0"/>      
+    <xacro:property name="fixed_z" value="3.2"/>  <!-- remember to mius pole_length to get camera's height -->
+
+        <!-- marginal view -->
+        <!-- <xacro:property name="fixed_x" value="0"/> -->
+        <!-- <xacro:property name="fixed_y" value="0.8"/> -->
+        <!-- <xacro:property name="fixed_z" value="3.2"/>   -->
+
+
+    <xacro:property name="artag_x" value="0.5"/>
+    <xacro:property name="artag_y" value="0.5"/>
+    <xacro:property name="artag_z" value="1.51"/>
+    <xacro:property name="artag_yaw" value="${PI/3}"/>
+
+    <!-- fixing point -->
+    <link name="world"/>
+
+    <link name="fixed_base"/>
+    
+    <joint name="fixed_joint" type="fixed">
+        <origin xyz="${fixed_x} ${fixed_y} ${fixed_z}" rpy="0 0 0"/>
+        <parent link="world"/>
+        <child link="fixed_base"/>
+    </joint>
+
+    <!-- a streching pole -->
+    <link name="pole">
+        <collision>
+            <geometry>
+                <cylinder radius="${pole_radius}" length="${pole_length-camera_link/2}"/>
+            </geometry>>
+            <origin rpy="0 0 0" xyz="0 0 ${(pole_length-camera_link/2)/2}"/>
+        </collision>
+        <visual>
+            <geometry>
+                <cylinder radius="${pole_radius}" length="${pole_length-camera_link/2}"/>
+            </geometry>>
+            <origin rpy="0 0 0" xyz="0 0 ${(pole_length-camera_link/2)/2}"/>
+            <material name="light_grey">
+                <color rgba="0.7 0.7 0.7 1.0"/>
+            </material>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 ${(pole_length-camera_link/2)/2}"/>
+            <mass value="0.5"/>
+            <inertia ixx="1.0e-5" ixy="0.0" ixz="0.0" iyy="1.0e-5" iyz="0.0" izz="1.0e-5"/>
+        </inertial>
+    </link>
+
+    <gazebo reference="pole">
+        <material>Gazebo/Grey</material>
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+    </gazebo>
+
+    <joint name="pole_joint" type="fixed">
+        <origin xyz="0 0 ${-pole_length+camera_link/2}" rpy="0 0 0"/>
+        <parent link="fixed_base"/>
+        <child link="pole"/>
+    </joint>
+
+    <!-- camera -->
+    <link name="camera_link">
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="${camera_link} ${camera_link} ${camera_link}"/>
+            </geometry>
+        </collision>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="${camera_link} ${camera_link} ${camera_link}"/>
+            </geometry>
+            <material name="indigo">
+                <color rgba="0.3 0.0 0.0 0.5"/>
+            </material>
+        </visual>
+
+        <inertial>
+            <mass value="1e-5"/>
+            <origin xyz="0 0 ${camera_link/2}" rpy="0 0 0"/>
+            <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+        </inertial>
+    </link>
+
+    <joint name="camera_joint" type="fixed">
+        <origin xyz="0 0 ${-camera_link/2}" rpy="${camera_roll} ${camera_pitch} ${camera_yaw}"/>
+        <parent link="pole"/>
+        <child link="camera_link"/>
+    </joint>
+
+    <gazebo reference="camera_link">
+        <material>Gazebo/Indigo</material>
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+    </gazebo>
+
+    <link name="camera_sensor"/>
+
+    <joint name="camera_sensor_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="0 ${-PI/2} ${PI/2}"/>
+        <parent link="camera_link"/>
+        <child link="camera_sensor"/>
+    </joint>
+
+</robot>

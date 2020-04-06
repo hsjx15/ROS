@@ -1,0 +1,199 @@
+<?xml version="1.0"?>
+<launch>
+
+	<arg name="find_pkg" default="$(find final_project)"/>
+	<arg name="moveit_launches" default="$(arg find_pkg)/launch/moveit_launches"/>
+
+    <!-- startup simulated world -->
+	<arg name="paused" default="false"/>
+	<arg name="gui" default="true"/>
+
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(arg find_pkg)/worlds/playground_with_artag.world"/>
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="gui" value="$(arg gui)"/>
+	</include>
+
+    <!-- spawn simulated UR5 -->
+    <group ns="UR5">
+
+		<arg name="limited" default="true"/>
+		<arg name="robot_name" default="ur5_robot"/>
+		<!-- better change initial pose in urdf file because -->
+		<!-- moveit! use /world as planning base frame -->
+		<arg name="init_pose" value="-x 0 -y 0 -z 0 -R 0 -P 0 -Y 0"/>
+		<!-- currently not stable if generated in home position -->
+		<arg name="start_in_home_position" default="false"/>
+
+		<!-- send robot urdf to param server -->
+		<param unless="$(arg limited)" name="robot_description" 
+			command="$(find xacro)/xacro --inorder '$(arg find_pkg)/urdf/ur5/ur5_robot.urdf.xacro'" />
+  		<param if="$(arg limited)" name="robot_description" 
+		  	command="$(find xacro)/xacro --inorder '$(arg find_pkg)/urdf/ur5/ur5_joint_limited_robot_with_gripper.urdf.xacro'" />
+
+		<!-- push robot_description to factory and spawn robot in gazebo -->
+		<arg if="$(arg start_in_home_position)" name="init_joint_positions" 
+			value="-J shoulder_lift_joint -1.5707 -J wrist_1_joint -1.5707"/>
+		<arg unless="$(arg start_in_home_position)" name="init_joint_positions"
+			value=""/>
+
+		<node name="spawn_gazebo_model" 
+			pkg="gazebo_ros" 
+			type="spawn_model" 
+			args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose) $(arg init_joint_positions)" 
+			respawn="false" 
+			output="screen"/>
+
+		<!-- Robot state publisher -->
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+			<param name="publish_frequency" type="double" value="50.0"/>
+			<param name="tf_prefix" type="string" value="UR5"/>
+		</node>
+
+		<!-- joint_state_controller -->
+		<rosparam file="$(arg find_pkg)/controller/joint_state_controller.yaml" 
+			command="load"/>
+		<node name="joint_state_controller_spawner" 
+			pkg="controller_manager" 
+			type="controller_manager" 
+			args="spawn joint_state_controller" 
+			respawn="false" 
+			output="screen"/>
+
+		<rosparam file="$(arg find_pkg)/controller/arm_controller_ur5.yaml" 
+			command="load"/>
+		<node name="arm_controller_spawner" 
+			pkg="controller_manager" 
+			type="controller_manager" 
+			args="spawn arm_controller" 
+			respawn="false" 
+			output="screen"/>
+
+		<rosparam command="load" file="$(arg find_pkg)/controller/ur5_gripper_control.yaml"/>
+		<node name="gripper_arm_controller_spawner"
+			pkg="controller_manager"
+			type="controller_manager"
+			args="spawn gripper_controller"
+			respawn="false"
+			output="screen"/>
+
+		<!-- moveit! -->
+
+		<!-- Remap follow_joint_trajectory -->
+		<remap from="/follow_joint_trajectory" to="/UR5/arm_controller/follow_joint_trajectory"/>
+
+		<include file="$(arg moveit_launches)/move_group.launch">
+			<arg name="limited" default="true"/>
+		</include>
+
+	</group>
+
+    <!-- spawn simulated EduMIP -->
+    <group ns="EduMIP">
+
+		<!-- Joy Node -->
+		<node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+			<param name="dev" type="string" value="/dev/input/js0"/>
+			<param name="deadzone" value="0.12"/>
+		</node>
+
+        <!-- Joy_twist Node -->
+		<param name="axis_linear" value="1" type="int"/>
+		<param name="axis_angular" value="0" type="int"/>
+		<param name="scale_linear" value="1" type="double"/>
+		<param name="scale_angular" value="1" type="double"/>
+		<node name="joy_twist" pkg="final_project" type="joy_twist_node">
+			<remap from="/joy" to="/EduMIP/joy"/>
+		</node>
+
+        <!-- load the URDF into the ROS parameter server -->
+		<arg name="model" default="$(arg find_pkg)/urdf/edumip/edumip_my_robot_horizontal.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro --inorder $(arg model)"/>
+    
+        <!-- run a python script to spawn a URDF robot -->
+		<arg name="robot_name" default="edumip_my_robot"/>
+		<arg name="init_pose" value="-x -0.6 -y -0.4 -z 1.6 -Y 0"/>
+
+		<node name="spawn_urdf" 
+			pkg="gazebo_ros" 
+			type="spawn_model" 
+			respawn="false" 
+			output="screen" 
+			args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"/>
+
+		<!-- edumip_my_robot_state_publisher Node-->
+		<node name="edumip_my_horizontal_robot_state_publisher" pkg="final_project" type="edumip_my_horizontal_robot_state_publisher">
+			<param name="tf_prefix" type="string" value="EduMIP"/>
+			<param name="odom_frame_id" type="string" value="simu_odom"/>
+			<param name="odom_child_frame_id" type="string" value="edumip_body"/>
+		</node>
+        
+		<!-- combine joint values -->
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+			<param name="publish_frequency" type="double" value="50.0"/>
+			<param name="tf_prefix" type="string" value="EduMIP"/>
+		</node>
+
+    </group>
+
+	<!-- start camera -->
+	<group ns="CAMERA">
+
+		<!-- load the URDF into the ROS parameter server -->
+		<arg name="model" default="$(arg find_pkg)/urdf/camera/single_camera_without_artag.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro --inorder $(arg model)"/>
+
+		<!-- run a python script to spawn a URDF robot -->
+		<arg name="robot_name" default="camera"/>
+		<arg name="init_pose" value="-x 0 -y 0 -z 0"/>
+
+		<node name="spawn_urdf" 
+			pkg="gazebo_ros" 
+			type="spawn_model" 
+			respawn="false" 
+			output="screen" 
+			args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"/>
+
+		<!-- combine joint values -->
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+			<param name="publish_frequency" type="double" value="50.0"/>
+			<param name="tf_prefix" type="string" value="CAMERA"/>
+		</node>
+
+		<!-- publish joint states -->
+		<node name="joint_state_publisher" type="joint_state_publisher" pkg="joint_state_publisher"/>
+
+		<!-- AR tag -->
+		<node pkg="image_proc" type="image_proc" name="image_proc"
+			output="screen" ns="camera"/>
+
+		<node pkg="aruco_ros" type="double" name="aruco" ns="camera">
+			<remap from="/image" to="image_raw" />
+			<remap from="/camera_info" to="camera_info" />
+			<param name="image_is_rectified" value="True"/>
+			<param name="marker_size"        value="0.1"/>
+			<param name="marker_id1"          value="01"/>
+			<param name="marker_id2"		  value="26"/>
+			<param name="normalizeImage"	 value="True"/>
+			<param name="dct_components_to_remove" value="2"/>
+			<param name="parent_name"       value="/CAMERA/camera_link"/>
+			<param name="child_name1"       value="/edumip_marker"/>
+			<param name="child_name2"  		value="/fixed_marker" />
+		</node>
+
+	</group>
+
+	<!-- start rviz -->
+	<!-- not compensate desk height -->
+  	<node pkg="tf" type="static_transform_publisher" name="world_broadcaster_UR5" args="0 0 0 0 0 0 world /UR5/world 100" /> 
+  	<node pkg="tf" type="static_transform_publisher" name="world_broadcaster_EduMIP" args="0 0 0 0 0 0 world /EduMIP/simu_odom 100" />
+	<node pkg="tf" type="static_transform_publisher" name="world_broadcaster_camera" args="0 0 0 0 0 0 world /CAMERA/world 100" /> 
+
+	<node name="rviz" pkg="rviz" type="rviz" 
+		args="-d $(arg find_pkg)/rviz/moveit.rviz" output="screen">
+		<rosparam command="load" file="$(find ur5_moveit_config)/config/kinematics.yaml"/>
+		<remap from="/planning_scene_world" to="/UR5/planning_scene_world"/>
+		<remap from="/planning_scene" to="/UR5/planning_scene"/>
+	</node>
+
+</launch>

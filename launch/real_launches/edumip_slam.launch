@@ -1,0 +1,18 @@
+<launch>
+
+    <node name="edumip_balance_ros_node" pkg="edumip_balance_ros" type="edumip_balance_ros_horizontal" output="screen" >
+	<param name="imu_frame_id" type="string" value="/EduMIP/edumip_body"/>
+	<param name="odom_frame_id" type="string" value="/EduMIP/odom"/>
+	<param name="odom_child_frame_id" type="string" value="/EduMIP/edumip_body"/>
+    </node>
+
+    <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode" output="screen">
+    <remap from="/scan" to="/edumip/laser/scan"/>
+    <param name="serial_port"         type="string" value="/dev/ttyUSB0"/>  
+    <param name="serial_baudrate"     type="int"    value="115200"/>
+    <param name="frame_id"            type="string" value="/EduMIP/laser"/>
+    <param name="inverted"            type="bool"   value="false"/>
+    <param name="angle_compensate"    type="bool"   value="true"/>
+    </node>
+
+</launch>

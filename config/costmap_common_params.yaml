@@ -1,0 +1,30 @@
+# this file points the costmaps at the sensor topics they should listen to for update
+
+# determines the maximum range sensor reading that will result in 
+# an obstacle being put into the costmap, i.e., robot will only update 
+# its map with information about obstacles that are within 0.8 meters of the base
+obstacle_range: 0.8    # meters
+# determines the range to which we will raytrace freespace given 
+# a sensor reading, i.e., the robot will attempt to clear out space
+# in front of it up to 1.0 meters away given a sensor reading
+raytrace_range: 1.0    # meters
+
+# the center of the robot is assumed to be at (0.0, 0.0)
+footprint: [[-0.11, -0.035], [-0.11, 0.035], [0.06, 0.035], [0.06, -0.035]]   # meter
+
+# set if it is circular
+# robot_radius: ir_of_robot  
+
+# the maximum distance from obstacles at which a cost should be incurred
+# i.e., the robot will treat all paths that stay 0.1 meters or more away
+# from obstacles as having equal obstacle cost
+inflation_radius: 0.1   # meters
+
+# defines a list of sensors that are going to be passing information to the costmap
+# separeted by spaces, possible sensor: laser_scan_sensor, point_cloud_sensor
+observation_sources: laser_scan_sensor
+
+# possible data_type: LaserScan, PointCloud
+# marking: whether  the sensor will be used to add obstacle information to the costmap
+# clear: whether the sensor will be used to clear obstacle information from the costmap
+laser_scan_sensor: {sensor_frame: /EduMIP/laser, data_type: LaserScan, topic: /edumip/laser/scan, marking: true, clearing: true}

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="find_pkg" default="$(find final_project)"/>
+
+    <!-- <node name="map_server" pkg="map_server" type="map_server"  -->
+        <!-- args="$(arg find_pkg)/map/desk_SLAM.yaml.pgm 0.025"/> -->
+
+    <node name="move_base" pkg="move_base" type="move_base" respawn="false" output="screen">
+        <remap from="odom" to="/edumip/odometry"/>
+        <remap from="cmd_vel" to="/edumip/cmd"/>
+        <rosparam file="$(arg find_pkg)/config/costmap_common_params.yaml" 
+            command="load" ns="global_costmap"/>
+        <rosparam file="$(arg find_pkg)/config/costmap_common_params.yaml" 
+            command="load" ns="local_costmap"/>
+        <rosparam file="$(arg find_pkg)/config/local_costmap_params.yaml" 
+            command="load"/>
+        <rosparam file="$(arg find_pkg)/config/global_costmap_params.yaml" 
+            command="load"/>
+        <rosparam file="$(arg find_pkg)/config/base_local_planner_params.yaml" 
+            command="load"/>
+        <param name="controller_frequency" value="5"/>
+    </node>
+
+</launch>

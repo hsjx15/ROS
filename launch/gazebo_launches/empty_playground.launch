@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<!-- playground without UR5, Camera, used for test mapping -->
+<launch>
+
+	<arg name="find_pkg" default="$(find final_project)"/>
+
+    <!-- <node pkg="tf" type="static_transform_publisher" name="map_to_odom" args="0 0 -1.5 0 0 0 /map /EduMIP/simu_odom 100"/> -->
+    <!-- <node pkg="tf" type="static_transform_publisher" name="simu_base_to_base" args="0 0 0 0 0 0 /EduMIP/simu_body /EduMIP/edumip_body 100"/> -->
+
+    <!-- startup simulated world -->
+	<arg name="paused" default="false"/>
+	<arg name="gui" default="true"/>
+
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(arg find_pkg)/worlds/playground.world"/>
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="gui" value="$(arg gui)"/>
+	</include>
+
+    <!-- spawn simulated EduMIP -->
+    <group ns="EduMIP">
+
+        <!-- Joy Node -->
+		<node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+			<param name="dev" type="string" value="/dev/input/js0"/>
+			<param name="deadzone" value="0.12"/>
+		</node>
+
+        <!-- Joy_twist Node -->
+		<param name="axis_linear" value="1" type="int"/>
+		<param name="axis_angular" value="0" type="int"/>
+		<param name="scale_linear" value="1" type="double"/>
+		<param name="scale_angular" value="1" type="double"/>
+		<node name="joy_twist" pkg="final_project" type="joy_twist_node">
+			<remap from="/joy" to="/EduMIP/joy"/>
+		</node>
+
+        <!-- load the URDF into the ROS parameter server -->
+		<arg name="model" default="$(arg find_pkg)/urdf/edumip/edumip_my_robot_horizontal.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro --inorder $(arg model)"/>
+       
+        <!-- run a python script to spawn a URDF robot -->
+		<arg name="robot_name" default="edumip_my_robot"/>
+		<arg name="init_pose" value="-x -3.5 -y -0 -z 1.6 -Y 0"/>
+
+		<node name="spawn_urdf" 
+			pkg="gazebo_ros" 
+			type="spawn_model" 
+			respawn="false" 
+			output="screen" 
+			args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"/>
+    
+		<!-- edumip_my_robot_state_publisher Node-->
+		<node name="edumip_my_horizontal_robot_state_publisher" pkg="final_project" type="edumip_my_horizontal_robot_state_publisher">
+			<param name="tf_prefix" type="string" value="EduMIP"/>
+			<param name="odom_frame_id" type="string" value="simu_odom"/>
+			<param name="odom_child_frame_id" type="string" value="edumip_body"/>
+			<!-- <param name="odom_child_frame_id" type="string" value="simu_body"/> -->
+		</node>
+
+		<!-- combine joint values -->
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+			<param name="publish_frequency" type="double" value="50.0"/>
+			<param name="tf_prefix" type="string" value="EduMIP"/>
+		</node>
+    </group>
+
+	<!-- start rviz -->
+	<!-- <node name="rviz" pkg="rviz" type="rviz" 
+		args="-d $(arg find_pkg)/rviz/empty_playground.rviz" /> -->
+
+</launch>

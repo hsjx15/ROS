@@ -1,0 +1,15 @@
+# this file stores configuration options specific to the local costmap
+local_costmap:
+  global_frame: /EduMIP/simu_odom
+  robot_base_frame: /EduMIP/edumip_body
+  update_frenquency: 2.0    # Hz
+  publish_frenquency: 1.0   # Hz
+  static_map: false
+  # true means that the costmap will remain centered around the robot as
+  # the robot moves through the world
+  rolling_window: true
+  # parameteres set of the costmap
+  width: 1.0      # meters
+  height: 1.0     # meter
+  # most of the time set it the same as the resolution of the static map
+  resolution: 0.025   # meters/cell

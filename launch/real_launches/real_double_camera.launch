@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="find_pkg" default="$(find final_project)"/>
+	
+	  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+	    <param name="video_device" value="/dev/video0" />
+	    <param name="image_width" value="1920" />
+	    <param name="image_height" value="1080" />
+	    <param name="pixel_format" value="yuyv" />
+	    <param name="camera_frame_id" value="camera_link" />
+	    <param name="io_method" value="mmap"/>
+	  </node>
+
+	<!-- AR tag -->
+	<node pkg="image_proc" type="image_proc" name="image_proc"
+		output="screen" ns="usb_cam"/>
+
+	<node pkg="aruco_ros" type="double" name="aruco" ns="usb_cam">
+		<remap from="/image" to="image_raw" />
+		<remap from="/camera_info" to="camera_info" />
+		<param name="image_is_rectified" value="True"/>
+		<param name="marker_size"        value="0.1"/>
+		<param name="marker_id1"          value="01"/>
+		<param name="marker_id2"		  value="26"/>
+		<param name="normalizeImage"	 value="True"/>
+		<param name="dct_components_to_remove" value="2"/>
+		<param name="parent_name"       value="camera_link"/>
+		<param name="child_name1"       value="/edumip_marker"/>
+		<param name="child_name2"  		value="/fixed_marker" />
+	</node>
+
+	<!-- start rviz -->
+	<node pkg="tf" type="static_transform_publisher" name="world_to_camera" args="0 0 1 0 0 0 world camera_link 100"/>
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(arg find_pkg)/rviz/real_camera.rviz"
+		output="screen">
+	</node>
+</launch>

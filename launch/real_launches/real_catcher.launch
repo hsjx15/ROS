@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- begin UR5 transporting -->
+    <node name="ur5_catcher" pkg="final_project" 
+        type="real_catcher_moveit" output="screen">
+        <remap from="/aruco/pose" to="usb_cam/aruco/pose"/>
+        <remap from="/aruco/pose2" to="usb_cam/aruco/pose2"/>
+        <remap from="ur_driver/URScript" to="ur_driver/URScript"/>
+        <param name="catcher_move_distance" type="double" value="0.20"/>
+	<param name="catcher_slight_move_distance" type="double" value="0.03"/>
+        <param name="gripper_edumip_distance" type="double" value="0.22"/>
+	<param name="gripper_fixed_distance" type="double" value="0.12"/>
+	<param name="gripper_fixed_shift" type="double" value="-0.0"/>
+        <param name="edumip_artag_xshift" type="double" value="-0.10"/>  <!-- move forward along x axis is positive -->
+	<param name="edumip_artag_yshift" type="double" value="0.005"/>
+	<param name="ur5_surface_height" type="double" value="0.00"/>
+        <param name="camera_pose_x" type="double" value="0.7611"/>
+        <param name="camera_pose_y" type="double" value="0.2337"/>
+        <param name="camera_pose_z" type="double" value="0.4414"/>
+        <param name="camera_orien_x" type="double" value="-0.6759"/>
+        <param name="camera_orien_y" type="double" value="-0.5842"/>
+        <param name="camera_orien_z" type="double" value="0.2735"/>
+        <param name="camera_orien_w" type="double" value="0.3565"/>
+        <!-- param name="planning_algorithm" type="string" value="RRTConnectkConfigDefault"/ -->
+        <param name="planning_algorithm" type="string" value="TRRTkConfigDefault"/>
+    </node>
+
+</launch>

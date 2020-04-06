@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="ur5" >
+
+    <!-- include gripper -->
+    <xacro:include filename="$(find final_project)/urdf/ur5/ur5_gripper.urdf.xacro"/>
+
+    <!-- some constants -->
+    <xacro:property name="PI" value="3.1415"/>
+    <xacro:property name="pole_length" value="0.1"/>
+    <xacro:property name="pole_radius" value="0.01"/>
+    <xacro:property name="toolbox_size" value="0.01"/>
+
+    <!-- fixing point -->
+    <link name="world"/>
+
+    <link name="gripper_fixed_point"/>
+
+    <joint name="gripper_fixed_joint" type="fixed">
+        <origin xyz="0 0 1" rpy="0 0 0"/>
+        <parent link="world"/>
+        <child link="gripper_fixed_point"/>
+    </joint>
+
+    <!-- a streching pole -->
+    <link name="pole">
+        <collision>
+            <geometry>
+                <cylinder radius="${pole_radius}" length="${pole_length}"/>
+            </geometry>>
+            <origin rpy="0 0 0" xyz="0 0 ${-pole_length/2}"/>
+        </collision>
+        <visual>
+            <geometry>
+                <cylinder radius="${pole_radius}" length="${pole_length}"/>
+            </geometry>>
+            <origin rpy="0 0 0" xyz="0 0 ${-pole_length/2}"/>
+            <material name="light_grey">
+                <color rgba="0.7 0.7 0.7 1.0"/>
+            </material>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 ${-pole_length/2}"/>
+            <mass value="0.5"/>
+            <inertia ixx="1.0e-5" ixy="0.0" ixz="0.0" iyy="1.0e-5" iyz="0.0" izz="1.0e-5"/>
+        </inertial>
+    </link>
+
+    <gazebo reference="pole">
+        <material>Gazebo/Grey</material>
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+    </gazebo>
+
+    <joint name="pole_joint" type="fixed">
+        <origin xyz="${pole_length} 0 0" rpy="0 ${PI/2} 0"/>
+        <parent link="gripper_fixed_point"/>
+        <child link="pole"/>
+    </joint>
+
+    <!-- add tool0 link -->
+    <link name="tool0">
+        <collision>
+            <geometry>
+                <box size="${toolbox_size} ${toolbox_size} ${toolbox_size}"/>
+            </geometry>>
+            <origin rpy="0 0 0" xyz="0 0 ${-toolbox_size/2}"/>
+        </collision>
+        <visual>
+            <geometry>
+                <box size="${toolbox_size} ${toolbox_size} ${toolbox_size}"/>
+            </geometry>>
+            <origin rpy="0 0 0" xyz="0 0 ${-toolbox_size/2}"/>
+            <material name="dark_khaki">
+                <color rgba="0.7 0.7 0.4 1.0"/>
+            </material>
+        </visual>
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 ${-toolbox_size/2}"/>
+            <mass value="0.5"/>
+            <inertia ixx="1.0e-5" ixy="0.0" ixz="0.0" iyy="1.0e-5" iyz="0.0" izz="1.0e-5"/>
+        </inertial>
+    </link>
+
+    <gazebo reference="tool0">
+        <material>Gazebo/Blue</material>
+        <mu1>0.2</mu1>
+        <mu2>0.2</mu2>
+    </gazebo>
+
+    <joint name="tool0_joint" type="fixed">
+        <origin xyz="0 0 ${toolbox_size}" rpy="0 0 ${PI/2}"/>
+        <parent link="pole"/>
+        <child link="tool0"/>
+    </joint>
+
+    <!-- add gripper -->
+    <xacro:property name="initial_angle" value="${PI/6}"/>  <!-- less than PI/2 -->
+    <xacro:property name="enable_initial_angle" value="false"/>
+
+    <xacro:gripper/>
+
+    <!-- Gazebo plugin for ROS Control -->
+    <gazebo>
+        <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+        <!-- <robotNamespace>/</robotNamespace> -->
+        </plugin>
+    </gazebo>
+
+</robot>

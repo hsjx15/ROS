@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<launch>
+
+<arg name="find_pkg" default="$(find final_project)"/>
+
+
+  <!-- robot_ip: IP-address of the robot's socket-messaging server -->
+  <arg name="robot_ip" default="172.22.22.2"/>
+  <arg name="limited" default="true"/>
+  <arg name="min_payload"  default="0.0"/>
+  <arg name="max_payload"  default="5.0"/>
+  <arg name="prefix" default="" />
+  <arg name="servoj_time" default="0.008" />
+  <arg name="base_frame" default="$(arg prefix)base" />
+  <arg name="tool_frame" default="$(arg prefix)tool0_controller" />
+
+  <!-- robot model -->
+  <param unless="$(arg limited)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find ur_description)/urdf/ur5_robot.urdf.xacro'" />
+  <param if="$(arg limited)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find ur_description)/urdf/ur5_joint_limited_robot.urdf.xacro'" />
+  
+  <!-- The max_velocity parameter is only used for debugging in the ur_driver. It's not related to actual velocity limits -->
+  <arg name="max_velocity" default="10.0"/> <!-- [rad/s] -->
+
+<!-- Robot state publisher -->
+<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+	<param name="publish_frequency" type="double" value="50.0"/>
+	<param name="tf_prefix" type="string" value=""/>
+</node>
+
+  <!-- driver -->
+  <node name="ur_driver" pkg="ur_modern_driver" type="ur_driver" output="screen">
+  <!-- copy the specified IP address to be consistant with ROS-Industrial spec. -->
+    <param name="prefix" type="str" value="$(arg prefix)" />
+    <param name="robot_ip_address" type="str" value="$(arg robot_ip)" />
+    <param name="min_payload" type="double" value="$(arg min_payload)" />
+    <param name="max_payload" type="double" value="$(arg max_payload)" />
+    <param name="max_velocity" type="double" value="$(arg max_velocity)" />
+    <param name="servoj_time" type="double" value="$(arg servoj_time)" />
+	<param name="base_frame" type="str" value="$(arg base_frame)"/>
+    <param name="tool_frame" type="str" value="$(arg tool_frame)"/>
+  </node>
+
+<!-- moveit! -->
+<include file="$(find ur5_moveit_config)/launch/move_group.launch">
+	<arg name="limited" default="true"/>
+</include>
+
+
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(arg find_pkg)/rviz/real_ur5.rviz" output="screen">
+		<rosparam command="load" file="$(find ur5_moveit_config)/config/kinematics.yaml"/>
+	</node>
+</launch>

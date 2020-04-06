@@ -1,0 +1,167 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="ur5" >
+
+    <!-- some constants -->
+    <xacro:property name="PI" value="3.1415926"/>
+
+    <xacro:property name="pole_length" value="0.1"/>    <!-- with half camera length -->
+    <xacro:property name="pole_radius" value="0.01"/>
+
+    <xacro:property name="camera_link" value="0.01"/>
+
+    <xacro:property name="camera_roll" value="0"/>
+    <xacro:property name="camera_pitch" value="${5*PI/6}"/>
+    <xacro:property name="camera_yaw" value="${PI}"/>
+
+    <xacro:property name="fixed_x" value="1"/>   <!-- swift left a little to catch better motion of EduMIP -->
+    <xacro:property name="fixed_y" value="0.4"/>      
+    <xacro:property name="fixed_z" value="2.2"/>  
+
+
+    <xacro:property name="artag_x" value="0.5"/>
+    <xacro:property name="artag_y" value="0.5"/>
+    <xacro:property name="artag_z" value="1.51"/>
+    <xacro:property name="artag_yaw" value="${PI/3}"/>
+
+    <link name="world"/>
+
+    <!-- single camera -->
+    <xacro:macro name="single_camera" params="prefix reflect">
+
+        <!-- fixing point -->
+        <link name="${prefix}_fixed_base"/>
+        
+        <joint name="${prefix}_fixed_joint" type="fixed">
+            <origin xyz="${fixed_x*reflect} ${fixed_y*reflect} ${fixed_z}" rpy="0 0 0"/>
+            <parent link="world"/>
+            <child link="${prefix}_fixed_base"/>
+        </joint>
+
+        <!-- a streching pole -->
+        <link name="${prefix}_pole">
+            <collision>
+                <geometry>
+                    <cylinder radius="${pole_radius}" length="${pole_length-camera_link/2}"/>
+                </geometry>>
+                <origin rpy="0 0 0" xyz="0 0 ${(pole_length-camera_link/2)/2}"/>
+            </collision>
+            <visual>
+                <geometry>
+                    <cylinder radius="${pole_radius}" length="${pole_length-camera_link/2}"/>
+                </geometry>>
+                <origin rpy="0 0 0" xyz="0 0 ${(pole_length-camera_link/2)/2}"/>
+                <material name="light_grey">
+                    <color rgba="0.7 0.7 0.7 1.0"/>
+                </material>
+            </visual>
+            <inertial>
+                <origin rpy="0 0 0" xyz="0 0 ${(pole_length-camera_link/2)/2}"/>
+                <mass value="0.5"/>
+                <inertia ixx="1.0e-5" ixy="0.0" ixz="0.0" iyy="1.0e-5" iyz="0.0" izz="1.0e-5"/>
+            </inertial>
+        </link>
+
+        <gazebo reference="${prefix}_pole">
+            <material>Gazebo/Grey</material>
+            <mu1>0.2</mu1>
+            <mu2>0.2</mu2>
+        </gazebo>
+
+        <joint name="${prefix}_pole_joint" type="fixed">
+            <origin xyz="0 0 ${-pole_length+camera_link/2}" rpy="0 0 0"/>
+            <parent link="${prefix}_fixed_base"/>
+            <child link="${prefix}_pole"/>
+        </joint>
+
+        <!-- camera -->
+        <link name="${prefix}_camera_link">
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <geometry>
+                    <box size="${camera_link} ${camera_link} ${camera_link}"/>
+                </geometry>
+            </collision>
+
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <geometry>
+                    <box size="${camera_link} ${camera_link} ${camera_link}"/>
+                </geometry>
+                <material name="indigo">
+                    <color rgba="0.3 0.0 0.0 0.5"/>
+                </material>
+            </visual>
+
+            <inertial>
+                <mass value="1e-5"/>
+                <origin xyz="0 0 ${camera_link/2}" rpy="0 0 0"/>
+                <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+            </inertial>
+        </link>
+
+        <joint name="${prefix}_camera_joint" type="fixed">
+            <origin xyz="0 0 ${-camera_link/2}" rpy="${camera_roll} ${reflect*camera_pitch} ${camera_yaw}"/>
+            <parent link="${prefix}_pole"/>
+            <child link="${prefix}_camera_link"/>
+        </joint>
+
+        <gazebo reference="${prefix}_camera_link">
+            <material>Gazebo/Indigo</material>
+            <mu1>0.2</mu1>
+            <mu2>0.2</mu2>
+        </gazebo>
+
+        <link name="${prefix}_camera_sensor"/>
+
+        <joint name="${prefix}_camera_sensor_joint" type="fixed">
+            <origin xyz="0 0 0" rpy="0 ${-PI/2} ${PI/2}"/>
+            <parent link="${prefix}_camera_link"/>
+            <child link="${prefix}_camera_sensor"/>
+        </joint>
+
+        <!-- camera plugin-->
+        <gazebo reference ="${prefix}_camera_link">
+            <sensor type="camera" name="camera">
+            <update_rate>30.0</update_rate>
+            <camera name="head">
+            <pose>0 0 0 0 -1.5708 1.5708</pose>
+
+                <!--<horizontal_fov>1.3962634</horizontal_fov>-->
+                <image>
+                <width>1920</width>
+                <height>1080</height>
+                <format>R8G8B8</format>
+                </image>
+                <clip>
+                <near>0.02</near>
+                <far>300</far>
+                </clip>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.007</stddev>
+                </noise>
+            </camera>
+            <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+                <alwaysOn>true</alwaysOn>
+                <updateRate>0.0</updateRate>
+                <cameraName>${prefix}_camera</cameraName>
+                <imageTopicName>image_raw</imageTopicName>
+                <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+                <frameName>${prefix}_camera_link</frameName>
+                <hackBaseline>0.0</hackBaseline>
+                <distortionK1>0.0</distortionK1>
+                <distortionK2>0.0</distortionK2>
+                <distortionK3>0.0</distortionK3>
+                <distortionT1>0.0</distortionT1>
+                <distortionT2>0.0</distortionT2>
+            </plugin>
+            </sensor>
+        </gazebo>
+
+    </xacro:macro>
+
+    <xacro:single_camera prefix="left" reflect="-1"/>
+    <xacro:single_camera prefix="right" reflect="1"/>
+
+    </robot>

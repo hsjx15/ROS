@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<launch>
+
+	<arg name="find_pkg" default="$(find final_project)"/>
+
+    <!-- startup simulated world -->
+	<arg name="paused" default="false"/>
+	<arg name="gui" default="true"/>
+
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(arg find_pkg)/worlds/empty_world.world"/>
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="gui" value="$(arg gui)"/>
+	</include>
+
+    <!-- send robot urdf to param server -->
+
+    <param name="robot_description" 
+        command="$(find xacro)/xacro --inorder '$(arg find_pkg)/urdf/ur5/fixed_gripper.urdf.xacro'" />
+
+    <!-- push robot_description to factory and spawn robot in gazebo -->
+    <arg name="robot_name" default="ur5_gripper"/>
+    <arg name="init_pose" value="-x 0 -y 0 -z 0"/>
+
+    <node name="spawn_gazebo_model" 
+        pkg="gazebo_ros" 
+        type="spawn_model" 
+        args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)" 
+        respawn="false" 
+        output="screen"/>
+
+    <!-- Robot state publisher -->
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+        <param name="publish_frequency" type="double" value="50.0"/>
+        <param name="tf_prefix" type="string" value=""/>
+    </node>
+
+    <!-- controller -->
+    <rosparam file="$(arg find_pkg)/controller/joint_state_controller.yaml" 
+        command="load"/>
+    <node name="joint_state_controller_spawner" 
+        pkg="controller_manager" 
+        type="controller_manager" 
+        args="spawn joint_state_controller" 
+        respawn="false" 
+        output="screen"/>
+
+    <rosparam command="load" file="$(arg find_pkg)/controller/ur5_gripper_control.yaml"/>
+    <node name="gripper_arm_controller_spawner"
+        pkg="controller_manager"
+        type="controller_manager"
+        args="spawn gripper_controller"
+        respawn="false"
+        output="screen"/>
+
+	<!-- start rviz -->
+	<!-- <node name="rviz" pkg="rviz" type="rviz" 
+		args="-d $(arg find_pkg)/rviz/ur5_gripper.rviz" output="screen">
+	</node> -->
+
+</launch>

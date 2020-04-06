@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<!-- playground without UR5, used for testing SLAM -->
+<launch>
+
+	<arg name="find_pkg" default="$(find final_project)"/>
+
+    <!-- startup simulated world -->
+	<arg name="paused" default="false"/>
+	<arg name="gui" default="true"/>
+
+	<include file="$(find gazebo_ros)/launch/empty_world.launch">
+		<arg name="world_name" value="$(arg find_pkg)/worlds/playground_with_artag.world"/>
+		<arg name="paused" value="$(arg paused)"/>
+		<arg name="gui" value="$(arg gui)"/>
+	</include>
+
+    <!-- spawn simulated EduMIP -->
+    <group ns="EduMIP">
+
+		<!-- Joy Node -->
+		<node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+			<param name="dev" type="string" value="/dev/input/js0"/>
+			<param name="deadzone" value="0.12"/>
+		</node>
+
+        <!-- Joy_twist Node -->
+		<param name="axis_linear" value="1" type="int"/>
+		<param name="axis_angular" value="0" type="int"/>
+		<param name="scale_linear" value="1" type="double"/>
+		<param name="scale_angular" value="1" type="double"/>
+		<node name="joy_twist" pkg="final_project" type="joy_twist_node">
+			<remap from="/joy" to="/EduMIP/joy"/>
+		</node>
+
+        <!-- load the URDF into the ROS parameter server -->
+		<arg name="model" default="$(arg find_pkg)/urdf/edumip/edumip_my_robot_horizontal.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro --inorder $(arg model)"/>
+    
+        <!-- run a python script to spawn a URDF robot -->
+		<arg name="robot_name" default="edumip_my_robot"/>
+		<arg name="init_pose" value="-x -3.5 -y -0 -z 1.6 -Y 0"/>
+
+		<node name="spawn_urdf" 
+			pkg="gazebo_ros" 
+			type="spawn_model" 
+			respawn="false" 
+			output="screen" 
+			args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"/>
+		
+		<!-- edumip_my_robot_state_publisher Node-->
+		<node name="edumip_my_horizontal_robot_state_publisher" pkg="final_project" type="edumip_my_horizontal_robot_state_publisher">
+			<param name="tf_prefix" type="string" value="EduMIP"/>
+			<param name="odom_frame_id" type="string" value="simu_odom"/>
+			<param name="odom_child_frame_id" type="string" value="edumip_body"/>
+			<!-- <param name="odom_child_frame_id" type="string" value="simu_body"/> -->
+		</node>
+        
+		<!-- combine joint values -->
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+			<param name="publish_frequency" type="double" value="50.0"/>
+			<param name="tf_prefix" type="string" value="EduMIP"/>
+		</node>
+		
+    </group>
+
+	<!-- start camera -->
+	<group ns="CAMERA">
+
+		<!-- load the URDF into the ROS parameter server -->
+		<arg name="model" default="$(arg find_pkg)/urdf/camera/single_camera_without_artag.urdf.xacro"/>
+		<param name="robot_description" command="$(find xacro)/xacro --inorder $(arg model)"/>
+
+		<!-- run a python script to spawn a URDF robot -->
+		<arg name="robot_name" default="camera"/>
+		<arg name="init_pose" value="-x 0 -y 0 -z 0"/>
+
+		<node name="spawn_urdf" 
+			pkg="gazebo_ros" 
+			type="spawn_model" 
+			respawn="false" 
+			output="screen" 
+			args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"/>
+
+		<!-- combine joint values -->
+		<node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+			<param name="publish_frequency" type="double" value="50.0"/>
+			<param name="tf_prefix" type="string" value="CAMERA"/>
+		</node>
+
+		<!-- publish joint states -->
+		<node name="joint_state_publisher" type="joint_state_publisher" pkg="joint_state_publisher"/>
+
+		<!-- AR tag -->
+		<node pkg="image_proc" type="image_proc" name="image_proc"
+			output="screen" ns="camera"/>
+
+		<node pkg="aruco_ros" type="double" name="aruco" ns="camera">
+			<remap from="/image" to="image_raw" />
+			<remap from="/camera_info" to="camera_info" />
+			<param name="image_is_rectified" value="True"/>
+			<param name="marker_size"        value="0.1"/>
+			<param name="marker_id1"          value="01"/>
+			<param name="marker_id2"		  value="26"/>
+			<param name="normalizeImage"	 value="True"/>
+			<param name="dct_components_to_remove" value="2"/>
+			<param name="parent_name"       value="/CAMERA/camera_link"/>
+			<param name="child_name1"       value="/edumip_marker"/>
+			<param name="child_name2"  		value="/fixed_marker" />
+		</node>
+
+	</group>
+
+	<!-- start rviz -->
+
+  	<node pkg="tf" type="static_transform_publisher" name="world_to_camera" args="0 0 0 0 0 0 world /CAMERA/world 100" /> 
+	<node pkg="tf" type="static_transform_publisher" name="world_to_destination" args="3.5 0.5 1.5 0 0 0 world /destination 100"/>
+	<node pkg="tf" type="static_transform_publisher" name="world_to_map" args="-3.5 0 1.534 0 0 0 world map 100"/>
+
+	<node name="rviz" pkg="rviz" type="rviz" 
+		args="-d $(arg find_pkg)/rviz/playground_without_ur5.rviz" />
+
+</launch>
